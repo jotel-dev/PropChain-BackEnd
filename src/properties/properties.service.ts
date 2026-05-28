@@ -400,12 +400,21 @@ export class PropertiesService {
     });
   }
 
-  async getAgents(propertyId: string) {
+  async getAgents(propertyId: string, user: AuthUserPayload) {
     const property = await this.prisma.property.findUnique({
       where: { id: propertyId },
     });
     if (!property) {
       throw new NotFoundException('Property not found');
+    }
+
+    if (user.role !== 'ADMIN' && user.sub !== property.ownerId) {
+      const assignedAgent = await (this.prisma as any).propertyAgent.findFirst({
+        where: { propertyId, agentId: user.sub },
+      });
+      if (!assignedAgent) {
+        throw new ForbiddenException('You are not authorized to view agent assignments for this property');
+      }
     }
 
     const assignments = await (this.prisma as any).propertyAgent.findMany({

@@ -103,8 +103,9 @@ export class PropertiesController {
     return this.propertiesService.removeAgentAssignment(propertyId, agentId, user);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id/agents')
-  async getAgents(@Param('id') propertyId: string) {
-    return this.propertiesService.getAgents(propertyId);
+  async getAgents(@Param('id') propertyId: string, @CurrentUser() user: AuthUserPayload) {
+    return this.propertiesService.getAgents(propertyId, user);
   }
 }

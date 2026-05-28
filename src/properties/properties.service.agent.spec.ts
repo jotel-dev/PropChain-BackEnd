@@ -18,6 +18,7 @@ describe('PropertiesService - Agent Assignment', () => {
     },
     propertyAgent: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -130,8 +131,8 @@ describe('PropertiesService - Agent Assignment', () => {
   });
 
   describe('getAgents', () => {
-    it('returns assigned agents resolving fallback contact details', async () => {
-      mockPrismaService.property.findUnique.mockResolvedValue({ id: 'prop-1' });
+    it('returns assigned agents resolving fallback contact details for owner', async () => {
+      mockPrismaService.property.findUnique.mockResolvedValue({ id: 'prop-1', ownerId: 'owner-1' });
       mockPrismaService.propertyAgent.findMany.mockResolvedValue([
         {
           id: 'assign-1',
@@ -147,7 +148,12 @@ describe('PropertiesService - Agent Assignment', () => {
         },
       ]);
 
-      const result = await service.getAgents('prop-1');
+      const result = await service.getAgents('prop-1', {
+        sub: 'owner-1',
+        email: 'owner@test.com',
+        role: 'USER',
+        type: 'access',
+      });
 
       expect(result).toEqual([
         expect.objectContaining({
@@ -157,6 +163,20 @@ describe('PropertiesService - Agent Assignment', () => {
           contactEmail: 'override@test.com', // custom override
         }),
       ]);
+    });
+
+    it('rejects unauthorized users from viewing assigned agents', async () => {
+      mockPrismaService.property.findUnique.mockResolvedValue({ id: 'prop-1', ownerId: 'owner-1' });
+      mockPrismaService.propertyAgent.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getAgents('prop-1', {
+          sub: 'other-user',
+          email: 'other@test.com',
+          role: 'USER',
+          type: 'access',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });
